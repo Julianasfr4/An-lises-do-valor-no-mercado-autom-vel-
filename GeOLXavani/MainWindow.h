@@ -3,15 +3,10 @@
 
 #include <QMainWindow>
 #include <QStackedWidget>
-#include <QWidget>
-#include <QPushButton>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QLineEdit>
-#include <QProcess>
+#include "ScraperWidget.h"
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
     Q_OBJECT
 
 public:
@@ -19,37 +14,21 @@ public:
     ~MainWindow();
 
 private slots:
-    // Navigation slots
-    void showMainMenu();
-    void showTrainModelView();
-    void showCheckValueView();
-
-    // Action slots
-    void runWebScraper();
-    void handleTrainModel();
-    void handleCheckPrice();
+    void switchToScraperView();
+    void switchToMainMenuView();
+    void onMlClicked();
+    void onCheckCarsClicked();
 
 private:
+    void setupMainMenuUi();
+
     QStackedWidget *stackedWidget;
-
-    // View Widgets
     QWidget *mainMenuWidget;
-    QWidget *trainModelWidget;
-    QWidget *checkValueWidget;
+    ScraperWidget *scraperWidget;
 
-    // Check Value Input Fields (for later ML integration)
-    QLineEdit *brandInput;
-    QLineEdit *modelInput;
-    QLineEdit *yearInput;
-    QLineEdit *kmInput;
-    QLabel *priceResultLabel;
-
-    // Train Model Input Fields
-    QLineEdit *datasetPathInput;
-
-    void createMainMenu();
-    void createTrainModelView();
-    void createCheckValueView();
+    // Fallback view widgets for your other features
+    QWidget *mlWidget;
+    QWidget *checkCarsWidget;
 };
 
 #endif // MAINWINDOW_H

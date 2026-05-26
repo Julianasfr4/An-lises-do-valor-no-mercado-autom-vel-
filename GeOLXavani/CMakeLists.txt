@@ -20,6 +20,8 @@ qt_add_executable(appGeOLXavani
     main.cpp
     MainWindow.h
     MainWindow.cpp
+    ScraperWidget.h
+    ScraperWidget.cpp
 )
 
 # 3. DELETED: The old "qt_add_qml_module" block because you do not need
@@ -37,8 +39,16 @@ target_link_libraries(appGeOLXavani
     PRIVATE Qt6::Widgets
 )
 
+# Add your python script to the project tree view
+add_custom_target(PythonScripts SOURCES
+    olx_car_scraper.py
+)
+
 install(TARGETS appGeOLXavani
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Add this right below your project(GeOLXavani ...) lines in CMakeLists.txt
+target_compile_definitions(appGeOLXavani PRIVATE PROJECT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
