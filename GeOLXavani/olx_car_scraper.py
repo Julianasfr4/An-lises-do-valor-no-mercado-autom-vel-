@@ -188,20 +188,37 @@ def parsear_card(card_soup) -> dict:
             km_txt = km_span.get_text(strip=True)
             m = re.sub(r"[^\d]", "", km_txt)
             if m:
-                dados["km"] = int(m)
+                # Extract year from front if present (1900-2099)
+                if len(m) >= 4 and 1900 <= int(m[:4]) <= 2099:
+                    if dados["ano"] is None:
+                        dados["ano"] = int(m[:4])
+                    if len(m) > 4:  # Only set km if there's data after year
+                        dados["km"] = int(m[4:])
+                else:
+                    dados["km"] = int(m)
 
     # -- Fallback para km se nao encontrou pelo icone ------------------
+        # -- Fallback para km se nao encontrou pelo icone ------------------
     if dados["km"] is None:
         spans = card_soup.find_all(["span", "li", "p"])
         for s in spans:
             txt_low = s.get_text(strip=True).lower()
-            m = re.search(r'([\d\s\.]+)\s*km', txt_low)
+            # Try to extract km with "km" suffix, but avoid capturing year
+            m = re.search(r'(\d[\d\s\.]*)\s*km', txt_low)
             if m:
-                val = re.sub(r'[\s\.]', '', m.group(1))
-                if val.isdigit():
-                    dados["km"] = int(val)
+                km_val = re.sub(r'[\s\.]', '', m.group(1))
+                if km_val.isdigit():
+                    dados["km"] = int(km_val)
                     break
-
+            else:
+                # If no "km", look for a number that could be km (4-6 digits, not a year)
+                numbers = re.findall(r'\b\d{4,6}\b', txt_low)
+                for num in numbers:
+                    if len(num) == 4 and 1900 <= int(num) <= 2099:
+                        continue  # skip year
+                    dados["km"] = int(num)
+                    break
+                    
     # -- Combustivel / Transmissao / Condicao (se visiveis no cartao) --
     param_textos = []
     for sel in ["[data-testid='param-value']", "span[class*='param']", "li[class*='param']"]:
@@ -384,17 +401,16 @@ def exportar(registos: list, caminho_base: str, formato: str):
 
     df = pd.DataFrame(registos)
     df = df.drop_duplicates(subset=["url"]).reset_index(drop=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    
     exportados = []
 
     if formato in ("csv", "ambos"):
-        f_csv = f"{caminho_base}_{timestamp}.csv"
-        df.to_csv(f_csv, index=False, encoding="utf-8-sig")
+        f_csv = "carros_scraped.csv"
+        df.to_csv(f_csv, index=False, encoding='utf-8-sig')
         exportados.append(f_csv)
 
     if formato in ("json", "ambos"):
-        f_json = f"{caminho_base}_{timestamp}.json"
+        f_json = "carros_scraped.json"
         df.to_json(f_json, orient="records", force_ascii=False, indent=2)
         exportados.append(f_json)
 
