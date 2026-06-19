@@ -22,6 +22,14 @@ qt_add_executable(appGeOLXavani
     MainWindow.cpp
     ScraperWidget.h
     ScraperWidget.cpp
+    MlWidget.h
+    MlWidget.cpp
+    TrainingWidget.h
+    TrainingWidget.cpp
+    CarSearchWidget.h
+    CarSearchWidget.cpp
+    CarEvaluationWidget.h
+    CarEvaluationWidget.cpp
 )
 
 # 3. DELETED: The old "qt_add_qml_module" block because you do not need
@@ -42,6 +50,7 @@ target_link_libraries(appGeOLXavani
 # Add your python script to the project tree view
 add_custom_target(PythonScripts SOURCES
     olx_car_scraper.py
+    ml-training.py
 )
 
 install(TARGETS appGeOLXavani

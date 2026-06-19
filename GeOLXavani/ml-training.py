@@ -325,18 +325,27 @@ class AvaliadorCarros:
         self.dados    = None
         self.treinado = False
 
-    def carregar(self, ficheiro="carros_scraped.csv"):
+# Tem apenas de substituir a função carregar no teu script Python atual por esta:
+
+    def carregar(self, default_ficheiro="carros_scraped.csv"):
+        # Se Qt passar caminho via argumento
+        if len(sys.argv) > 1 and sys.argv[1].endswith('.csv'):
+            ficheiro = sys.argv[1]
+        else:
+            ficheiro = default_ficheiro
+    
         print(f"\n   A carregar '{ficheiro}'...")
         try:
             df = pd.read_csv(ficheiro)
         except FileNotFoundError:
             print(f"   ERRO: ficheiro '{ficheiro}' não encontrado. Executa o Scraper primeiro.")
             sys.exit(1)
-
+    
         print(f"   {len(df):,} registos encontrados no CSV")
-        
-        # Renomear colunas do scraper OLX para nomes esperados
-        # Renomear colunas do scraper OLX para nomes esperados
+    
+        # =========================================================
+        # ✅ CORREÇÃO PRINCIPAL: converter colunas do scraper
+        # =========================================================
         df = df.rename(columns={
             "preco_eur": "price",
             "km": "mileage",
@@ -346,24 +355,40 @@ class AvaliadorCarros:
             "combustivel": "fuel",
             "transmissao": "gear"
         })
-        
-        # Adicionar coluna hp fictícia (não disponível no scraper OLX)
+    
+        # Criar coluna hp se não existir
         if "hp" not in df.columns:
-            df["hp"] = 150  # valor padrão
-        
-        # Sanitização robusta dos tipos numéricos do Scraper
-        for col in ["price", "mileage", "year"]:
+            df["hp"] = 100  # valor default
+    
+        # =========================================================
+        # Sanitização numérica
+        # =========================================================
+        for col in ["price", "mileage", "hp", "year"]:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce')
-        
-        df = df.dropna(subset=["price", "mileage", "year"])
-        
-        df = df[(df["price"]   >= Config.PRECO_MIN)  & (df["price"]   <= Config.PRECO_MAX)]
-        df = df[(df["mileage"] >= 0)                  & (df["mileage"] <= Config.KM_MAX)]
-        df = df[(df["hp"]      > 0)                  & (df["hp"]      <= Config.HP_MAX)]
-        print(f"   {len(df):,} registos válidos após filtragem e limpeza")
+                df[col] = pd.to_numeric(df[col], errors='coerce')
 
-        df["_busca"] = (df["make"].astype(str).str.lower() + " " + df["model"].astype(str).str.lower())
+    
+        # Remover linhas inválidas
+        df = df.dropna(subset=["price", "mileage", "hp", "year"])
+        
+        df["price"] = df["price"].astype(int)
+        df["mileage"] = df["mileage"].astype(int)
+        df["year"] = df["year"].astype(int)
+        df["hp"] = df["hp"].astype(int)
+    
+        # Filtros
+        df = df[(df["price"]   >= Config.PRECO_MIN)  & (df["price"]   <= Config.PRECO_MAX)]
+        df = df[(df["mileage"] >= 0)                 & (df["mileage"] <= Config.KM_MAX)]
+        df = df[(df["hp"]      > 0)                  & (df["hp"]      <= Config.HP_MAX)]
+    
+        print(f"   {len(df):,} registos válidos após filtragem e limpeza")
+    
+        # Campo de busca
+        df["_busca"] = (
+            df["make"].astype(str).str.lower() + " " +
+            df["model"].astype(str).str.lower()
+        )
+    
         self.dados = df
 
     def treinar(self):

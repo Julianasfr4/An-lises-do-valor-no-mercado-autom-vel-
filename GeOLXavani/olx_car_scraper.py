@@ -10,14 +10,14 @@ INSTALACAO (uma vez):
     pip install selenium undetected-chromedriver beautifulsoup4 lxml pandas tqdm
 
 UTILIZACAO:
-    python webcar.py                                                # 5 paginas, exporta CSV + JSON
-    python webcar.py --pages 20                                     # 20 paginas
-    python webcar.py --marca BMW                                    # filtra por marca
-    python webcar.py --marca BMW --ano-min 2018                     # BMW a partir de 2018
-    python webcar.py --marca BMW --ano-min 2015 --ano-max 2020   # BMW entre 2015 e 2020
-    python webcar.py --preco-min 5000 --preco-max 20000     # preco entre 5000E e 20000E
-    python webcar.py --marca BMW --ano-min 2018 --preco-max 30000 --detalhe
-    python webcar.py --output resultados --formato csv
+    python olx_car_scraping.py                                                          # 5 paginas, exporta CSV + JSON
+    python olx_car_scraping.py --pages 20                                               # 20 paginas
+    python olx_car_scraping.py --marca BMW                                              # filtra por marca
+    python olx_car_scraping.py --marca BMW --ano-min 2018                               # BMW a partir de 2018
+    python olx_car_scraping.py --marca BMW --ano-min 2015 --ano-max 2020                # BMW entre 2015 e 2020
+    python olx_car_scraping.py --preco-min 5000 --preco-max 20000                       # preco entre 5000E e 20000E
+    python olx_car_scraping.py --marca BMW --ano-min 2018 --preco-max 30000 --detalhe   # has more detail
+    python olx_car_scraping.py --output resultados --formato csv                        # choses format and name of the file to save
 ---------------------------------------------------------------------
 """
 
@@ -570,14 +570,14 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Exemplos:
-  python webcar.py
-  python webcar.py --pages 10 --marca BMW
-  python webcar.py --marca BMW --ano-min 2018
-  python webcar.py --marca BMW --ano-min 2015 --ano-max 2020
-  python webcar.py --preco-min 5000 --preco-max 20000
-  python webcar.py --marca BMW --ano-min 2018 --preco-max 30000 --detalhe
-  python webcar.py --pages 5 --detalhe --no-headless
-  python webcar.py --output meus_carros --formato json
+  python olx_car_scraping.py
+  python olx_car_scraping.py --pages 10 --marca BMW
+  python olx_car_scraping.py --marca BMW --ano-min 2018
+  python olx_car_scraping.py --marca BMW --ano-min 2015 --ano-max 2020
+  python olx_car_scraping.py --preco-min 5000 --preco-max 20000
+  python olx_car_scraping.py --marca BMW --ano-min 2018 --preco-max 30000 --detalhe
+  python olx_car_scraping.py --pages 5 --detalhe --no-headless
+  python olx_car_scraping.py --output meus_carros --formato json
         """
     )
 

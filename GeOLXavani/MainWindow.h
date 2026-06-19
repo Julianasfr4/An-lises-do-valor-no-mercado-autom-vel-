@@ -3,7 +3,11 @@
 
 #include <QMainWindow>
 #include <QStackedWidget>
-#include "ScraperWidget.h"
+
+// Forward Declarations: Dizemos ao compilador que estas classes existem,
+// sem precisar de incluir os ficheiros .h completos aqui dentro.
+class ScraperWidget;
+class MlWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -24,10 +28,10 @@ private:
 
     QStackedWidget *stackedWidget;
     QWidget *mainMenuWidget;
-    ScraperWidget *scraperWidget;
 
-    // Fallback view widgets for your other features
-    QWidget *mlWidget;
+    // Ponteiros com os tipos exatos e corretos
+    ScraperWidget *scraperWidget;
+    MlWidget *mlWidget;
     QWidget *checkCarsWidget;
 };
 

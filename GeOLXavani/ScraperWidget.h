@@ -10,16 +10,20 @@
 #include <QStandardItemModel>
 #include <QProcess>
 
+// Forward Declaration para quebrar a dependência circular
+class MainWindow;
+
 class ScraperWidget : public QWidget
 {
     Q_OBJECT
 
 public:
+    // Mantendo a assinatura exata que usas no teu projeto
     explicit ScraperWidget(QWidget *parent = nullptr);
     ~ScraperWidget();
 
 signals:
-    void backToMainMenuRequested(); // Let the main window know we want to go back
+    void backToMainMenuRequested();
 
 private slots:
     void onRunScraperClicked();
