@@ -1,5 +1,5 @@
 # =============================================================
-# Avaliador Inteligente de Carros — Versão Atualizada Scraper
+# Avaliador Inteligente de Carros — Versão Atualizada
 # Modelos: Reg. Linear | Reg. Exponencial | Reg. Logarítmica |
 #          Random Forest | XGBoost | LightGBM
 # =============================================================
@@ -10,12 +10,16 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import warnings
 import sys
+import os
+import re
+import pickle
 warnings.filterwarnings("ignore")
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 from lightgbm import LGBMRegressor
 
@@ -30,15 +34,13 @@ except ImportError:
         def print(self, *args, **kwargs): print(*args)
     console = Console()
 
-
 # =============================================================
 # 1. CONFIGURAÇÃO CENTRAL
 # =============================================================
 
 class Config:
-    CAMPOS_NUMERICOS   = ["mileage", "hp", "year"]
+    CAMPOS_NUMERICOS   = ["mileage", "hp", "year", "age", "km_per_year"]
     CAMPOS_CATEGORICOS = ["make", "model", "fuel", "gear"]
-    CAMPOS_LOG         = ["mileage", "hp"]
 
     PRECO_MIN  =       500
     PRECO_MAX  =   600_000
@@ -61,18 +63,56 @@ class Config:
     def campos_treino(cls):
         return cls.CAMPOS_NUMERICOS + cls.CAMPOS_CATEGORICOS
 
+BRAND_MAP = {
+    "mercedes-benz": "Mercedes-Benz", "mercedes": "Mercedes-Benz", "marcedes": "Mercedes-Benz",
+    "bmw": "BMW", "audi": "Audi", "peugeot": "Peugeot", "renault": "Renault",
+    "volkswagen": "Volkswagen", "vw": "Volkswagen", "toyota": "Toyota", "citroen": "Citroen",
+    "citroën": "Citroen", "porsche": "Porsche", "ford": "Ford", "opel": "Opel",
+    "tesla": "Tesla", "volvo": "Volvo", "fiat": "Fiat", "nissan": "Nissan",
+    "mini": "Mini", "hyundai": "Hyundai", "byd": "BYD", "honda": "Honda",
+    "smart": "Smart", "seat": "Seat", "alfa romeo": "Alfa Romeo", "alfa": "Alfa Romeo",
+    "land rover": "Land Rover", "land": "Land Rover", "range rover": "Land Rover",
+    "range": "Land Rover", "mazda": "Mazda", "cupra": "Cupra", "polestar": "Polestar",
+    "class": "Mercedes-Benz", "jaguar": "Jaguar", "dacia": "Dacia", "mitsubishi": "Mitsubishi",
+    "kia": "Kia", "chevrolet": "Chevrolet", "chervolet": "Chevrolet", "bentley": "Bentley",
+    "ds": "DS", "mg": "MG", "skoda": "Skoda", "saab": "Saab", "dodge": "Dodge",
+    "ferrari": "Ferrari", "aston martin": "Aston Martin", "aston": "Aston Martin",
+    "moke": "Moke", "jeep": "Jeep", "suzuki": "Suzuki", "microcar": "Microcar",
+    "subaru": "Subaru", "lancia": "Lancia", "rover": "Rover"
+}
+
+MODEL_TO_BRAND = {
+    "punto": ("Fiat", "Punto"), "laguna": ("Renault", "Laguna"), "defender": ("Land Rover", "Defender"),
+    "clio": ("Renault", "Clio"), "megane": ("Renault", "Megane"), "golf": ("Volkswagen", "Golf"),
+    "corsa": ("Opel", "Corsa"), "astra": ("Opel", "Astra"), "ibiza": ("Seat", "Ibiza"),
+    "civic": ("Honda", "Civic")
+}
 
 # =============================================================
-# 2. ENGENHARIA DE FEATURES
+# 2. ENGENHARIA DE FEATURES E LIMPEZA
 # =============================================================
 
 class FeatureEngineer:
-
     def __init__(self):
         self.colunas_treino = None
+        self.modelos_frequentes = None
 
-    def preparar(self, df: pd.DataFrame) -> pd.DataFrame:
-        X = df[Config.campos_treino()].copy()
+    def fit_modelos(self, models_series):
+        # Group models with count < 3 into "Outro"
+        counts = models_series.value_counts()
+        self.modelos_frequentes = counts[counts >= 3].index.tolist()
+
+    def preparar(self, df: pd.DataFrame, fit_mode=False) -> pd.DataFrame:
+        df_copy = df.copy()
+        
+        # Apply simplified model grouping
+        if fit_mode:
+            self.fit_modelos(df_copy["model"])
+            
+        if self.modelos_frequentes is not None:
+            df_copy["model"] = df_copy["model"].apply(lambda x: x if x in self.modelos_frequentes else "Outro")
+            
+        X = df_copy[Config.campos_treino()].copy()
         X = pd.get_dummies(X, columns=Config.CAMPOS_CATEGORICOS)
         return X
 
@@ -82,11 +122,11 @@ class FeatureEngineer:
     def alinhar(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.colunas_treino is None:
             raise RuntimeError("Chame fit() primeiro.")
+        # Ensure all columns from training are present
         for col in self.colunas_treino:
             if col not in X.columns:
                 X[col] = 0
         return X[self.colunas_treino]
-
 
 # =============================================================
 # 3. MODELOS
@@ -115,48 +155,63 @@ class ModeloBase:
         )
         return self.metricas
 
-
 class RegLinear(ModeloBase):
     def __init__(self):
         super().__init__("Regressão Linear", Config.CORES["Regressão Linear"])
+        self.scaler = StandardScaler()
 
     def treinar(self, X, y):
         self._m = LinearRegression()
-        self._m.fit(X, y)
+        X_scaled = X.copy()
+        # Scale numeric features (first 5 columns)
+        X_scaled[:, :5] = self.scaler.fit_transform(X[:, :5])
+        self._m.fit(X_scaled, y)
 
     def prever(self, X):
-        return self._m.predict(X)
-
+        X_scaled = X.copy()
+        X_scaled[:, :5] = self.scaler.transform(X[:, :5])
+        return self._m.predict(X_scaled)
 
 class RegExponencial(ModeloBase):
     def __init__(self):
         super().__init__("Reg. Exponencial", Config.CORES["Reg. Exponencial"], "(log target)")
+        self.scaler = StandardScaler()
 
     def treinar(self, X, y):
-        self._m = LinearRegression()
-        self._m.fit(X, np.log1p(y))
+        # Use Ridge regression for stability
+        self._m = Ridge(alpha=1.0)
+        X_scaled = X.copy()
+        X_scaled[:, :5] = self.scaler.fit_transform(X[:, :5])
+        self._m.fit(X_scaled, np.log1p(y))
 
     def prever(self, X):
-        return np.expm1(self._m.predict(X))
-
+        X_scaled = X.copy()
+        X_scaled[:, :5] = self.scaler.transform(X[:, :5])
+        return np.expm1(self._m.predict(X_scaled))
 
 class RegLogaritmica(ModeloBase):
     def __init__(self):
         super().__init__("Reg. Logarítmica", Config.CORES["Reg. Logarítmica"], "(log features)")
+        self.scaler = StandardScaler()
 
     def _transformar(self, X: np.ndarray) -> np.ndarray:
         Xl = X.astype(np.float64)
+        # Apply log transform to mileage (idx 0), hp (idx 1), km_per_year (idx 4)
         Xl[:, 0] = np.log1p(np.maximum(0, Xl[:, 0]))
         Xl[:, 1] = np.log1p(np.maximum(0, Xl[:, 1]))
+        Xl[:, 4] = np.log1p(np.maximum(0, Xl[:, 4]))
         return Xl
 
     def treinar(self, X, y):
         self._m = LinearRegression()
-        self._m.fit(self._transformar(X), y)
+        Xt = self._transformar(X)
+        Xt[:, :5] = self.scaler.fit_transform(Xt[:, :5])
+        self._m.fit(Xt, y)
 
     def prever(self, X):
-        return self._m.predict(self._transformar(X))
-
+        Xt = self._transformar(X)
+        Xt[:, :5] = self.scaler.transform(Xt[:, :5])
+        return self._m.predict(Xt)
 
 class RndForest(ModeloBase):
     def __init__(self):
@@ -164,13 +219,12 @@ class RndForest(ModeloBase):
 
     def treinar(self, X, y):
         self._m = RandomForestRegressor(
-            n_estimators=150, max_depth=20,
-            min_samples_leaf=3, n_jobs=-1, random_state=Config.RANDOM_STATE)
+            n_estimators=150, max_depth=15,
+            min_samples_leaf=2, n_jobs=-1, random_state=Config.RANDOM_STATE)
         self._m.fit(X, y)
 
     def prever(self, X):
         return self._m.predict(X)
-
 
 class XGB(ModeloBase):
     def __init__(self):
@@ -178,7 +232,7 @@ class XGB(ModeloBase):
 
     def treinar(self, X, y):
         self._m = XGBRegressor(
-            n_estimators=300, max_depth=6, learning_rate=0.05,
+            n_estimators=200, max_depth=5, learning_rate=0.06,
             subsample=0.8, colsample_bytree=0.8,
             random_state=Config.RANDOM_STATE, verbosity=0)
         self._m.fit(X, y)
@@ -186,21 +240,19 @@ class XGB(ModeloBase):
     def prever(self, X):
         return self._m.predict(X)
 
-
 class LGBM(ModeloBase):
     def __init__(self):
         super().__init__("LightGBM", Config.CORES["LightGBM"])
 
     def treinar(self, X, y):
         self._m = LGBMRegressor(
-            n_estimators=300, max_depth=6, learning_rate=0.05,
+            n_estimators=200, max_depth=5, learning_rate=0.06,
             subsample=0.8, colsample_bytree=0.8,
             random_state=Config.RANDOM_STATE, verbose=-1)
         self._m.fit(X, y)
 
     def prever(self, X):
         return self._m.predict(X)
-
 
 # =============================================================
 # 4. GESTOR DE MODELOS
@@ -237,7 +289,6 @@ class ModelManager:
         X = self.fe.alinhar(X)
         Xv = X.values.astype(np.float64)
         return {m.nome: max(float(m.prever(Xv)[0]), Config.PRECO_MIN) for m in self.modelos}
-
 
 # =============================================================
 # 5. GRÁFICOS
@@ -312,62 +363,176 @@ def gerar_graficos(modelos: list, y_teste: np.ndarray, ficheiro="comparacao_mode
     plt.show()
     print(f"   Gráfico guardado: {ficheiro}")
 
-
 # =============================================================
 # 6. SISTEMA PRINCIPAL
 # =============================================================
 
 class AvaliadorCarros:
-
     def __init__(self):
         self.fe       = FeatureEngineer()
         self.mm       = ModelManager(self.fe)
         self.dados    = None
         self.treinado = False
 
-# Tem apenas de substituir a função carregar no teu script Python atual por esta:
+    def clean_title_make_model(self, row):
+        titulo_limpo = ""
+        if "titulo" in row and pd.notna(row["titulo"]):
+            titulo_limpo = str(row["titulo"]).strip()
+        elif "title" in row and pd.notna(row["title"]):
+            titulo_limpo = str(row["title"]).strip()
+            
+        if not titulo_limpo:
+            make_val = row.get("marca") or row.get("make") or ""
+            model_val = row.get("modelo") or row.get("model") or ""
+            titulo_limpo = (str(make_val) + " " + str(model_val)).strip()
+            
+        titulo_lower = titulo_limpo.lower()
+        
+        # Model mapping
+        partes_low = titulo_lower.split()
+        first_word = partes_low[0] if partes_low else ""
+        if first_word in MODEL_TO_BRAND:
+            brand, model = MODEL_TO_BRAND[first_word]
+            rest = titulo_limpo[len(first_word):].strip()
+            model_details = (first_word + " " + " ".join(rest.split()[:2])).strip()
+            return pd.Series([brand, model_details])
+            
+        # Search known brands
+        for brand_key, brand_norm in BRAND_MAP.items():
+            if brand_key in titulo_lower:
+                idx = titulo_lower.find(brand_key)
+                words_after = titulo_limpo[idx + len(brand_key):].strip().split()
+                model = " ".join(words_after[:2]) if words_after else "Outro"
+                return pd.Series([brand_norm, model])
+                
+        # Split fallback
+        partes = titulo_limpo.split()
+        if len(partes) >= 1:
+            make = partes[0]
+            make = re.sub(r'^[^\w]+', '', make)
+            make = BRAND_MAP.get(make.lower(), make.title())
+        else:
+            make = "Desconhecido"
+            
+        model = " ".join(partes[1:3]) if len(partes) >= 2 else "Outro"
+        return pd.Series([make, model])
 
-    def carregar(self, default_ficheiro="carros_scraped.csv"):
-        # Se Qt passar caminho via argumento
-        if len(sys.argv) > 1 and sys.argv[1].endswith('.csv'):
+    def estimar_potencia(self, row):
+        if "potencia_cv" in row and pd.notna(row["potencia_cv"]):
+            try:
+                val = float(row["potencia_cv"])
+                if 10 <= val <= 1000:
+                    return val
+            except:
+                pass
+        if "hp" in row and pd.notna(row["hp"]):
+            try:
+                val = float(row["hp"])
+                if 10 <= val <= 1000 and val != 100:
+                    return val
+            except:
+                pass
+                
+        title = (str(row.get("make", "")) + " " + str(row.get("model", ""))).lower()
+        
+        m = re.search(r'(\d+)\s*cv', title)
+        if m:
+            return int(m.group(1))
+            
+        m = re.search(r'(\d\.\d)\s*(?:gasolina|diesel|hdi|tdi|dci|d|i)', title)
+        if m:
+            liters = float(m.group(1))
+            if liters >= 3.0: return 250
+            elif liters >= 2.5: return 190
+            elif liters >= 2.0: return 150
+            elif liters >= 1.6: return 115
+            elif liters >= 1.4: return 90
+            else: return 75
+            
+        if "tesla" in title or "porsche" in title or "ferrari" in title or "amg" in title or "m5" in title:
+            return 300
+        if "mustang" in title or "camaro" in title:
+            return 300
+        if "320d" in title or "220d" in title or "a4" in title or "a5" in title or "passat" in title or "520d" in title:
+            return 150
+        if "corsa" in title or "clio" in title or "yaris" in title or "fiesta" in title or "c3" in title or "punto" in title or "micra" in title:
+            return 75
+        if "smart" in title:
+            return 71
+        if "zoe" in title:
+            return 90
+            
+        make = str(row.get("make", "")).lower()
+        if make in ["porsche", "tesla", "jaguar", "bentley", "maserati", "ferrari", "aston"]:
+            return 280
+        if make in ["bmw", "audi", "mercedes-benz", "mercedes"]:
+            return 150
+        if make in ["volvo", "alfa", "cupra", "byd"]:
+            return 140
+        if make in ["volkswagen", "toyota", "nissan", "hyundai", "honda", "kia", "ford", "skoda", "mazda"]:
+            return 110
+        if make in ["peugeot", "renault", "opel", "citroen", "fiat", "dacia", "seat", "smart"]:
+            return 85
+            
+        return 100
+
+    def carregar(self, default_ficheiro="site/olx_carros.csv"):
+        # Se Qt ou terminal passar caminho via argumento
+        if len(sys.argv) > 2 and sys.argv[2].endswith('.csv'):
+            ficheiro = sys.argv[2]
+        elif len(sys.argv) > 1 and sys.argv[1].endswith('.csv'):
             ficheiro = sys.argv[1]
         else:
-            ficheiro = default_ficheiro
-    
+            # Fallback pathing relative to execution source dir
+            possible_paths = [
+                default_ficheiro,
+                "../" + default_ficheiro,
+                "site/olx_carros.csv",
+                "../site/olx_carros.csv",
+                "carros_scraped.csv"
+            ]
+            ficheiro = None
+            for p in possible_paths:
+                if os.path.exists(p):
+                    ficheiro = p
+                    break
+            if not ficheiro:
+                ficheiro = default_ficheiro
+
         print(f"\n   A carregar '{ficheiro}'...")
         try:
             df = pd.read_csv(ficheiro)
         except FileNotFoundError:
             print(f"   ERRO: ficheiro '{ficheiro}' não encontrado. Executa o Scraper primeiro.")
             sys.exit(1)
-    
+
         print(f"   {len(df):,} registos encontrados no CSV")
-    
-        # =========================================================
-        # ✅ CORREÇÃO PRINCIPAL: converter colunas do scraper
-        # =========================================================
+
+        # Rename columns to ensure English format for the ML pipeline
         df = df.rename(columns={
-            "preco_eur": "price",
-            "km": "mileage",
-            "ano": "year",
-            "marca": "make",
-            "modelo": "model",
-            "combustivel": "fuel",
-            "transmissao": "gear"
+            "preco_eur": "price", "preco": "price",
+            "km": "mileage", "quilometros": "mileage",
+            "ano": "year", "marca": "make", "modelo": "model",
+            "combustivel": "fuel", "transmissao": "gear"
         })
-    
-        # Criar coluna hp se não existir
-        if "hp" not in df.columns:
-            df["hp"] = 100  # valor default
-    
-        # =========================================================
+
+        # Re-map/Clean brand and model names in-place
+        df[["make", "model"]] = df.apply(self.clean_title_make_model, axis=1)
+
+        # Drop invalid dirty rows
+        invalid_brands = ['Vendo', 'Raro', 'Carrinha', 'Laguna', 'Punto', 'Defender', 'Desconhecido', '!!!Mercedes-Benz']
+        df = df[~df['make'].isin(invalid_brands)]
+
+        # Heuristic power estimation
+        df["hp"] = df.apply(self.estimar_potencia, axis=1)
+
         # Sanitização numérica
-        # =========================================================
         for col in ["price", "mileage", "hp", "year"]:
             if col in df.columns:
+                if df[col].dtype == object or df[col].dtype == str:
+                    df[col] = df[col].astype(str).str.replace(r'[^\d]', '', regex=True)
                 df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    
         # Remover linhas inválidas
         df = df.dropna(subset=["price", "mileage", "hp", "year"])
         
@@ -375,23 +540,27 @@ class AvaliadorCarros:
         df["mileage"] = df["mileage"].astype(int)
         df["year"] = df["year"].astype(int)
         df["hp"] = df["hp"].astype(int)
-    
+
+        # Feature Engineering
+        df['age'] = 2026 - df['year']
+        df['km_per_year'] = df['mileage'] / (df['age'] + 1)
+
         # Filtros
         df = df[(df["price"]   >= Config.PRECO_MIN)  & (df["price"]   <= Config.PRECO_MAX)]
         df = df[(df["mileage"] >= 0)                 & (df["mileage"] <= Config.KM_MAX)]
         df = df[(df["hp"]      > 0)                  & (df["hp"]      <= Config.HP_MAX)]
-    
-        print(f"   {len(df):,} registos válidos após filtragem e limpeza")
-    
-        # Campo de busca
+
+        print(f"   {len(df):,} registos válidos após filtragem, limpeza e engenharia de features")
+
+        # Campo de busca para interface interativa
         df["_busca"] = (
             df["make"].astype(str).str.lower() + " " +
             df["model"].astype(str).str.lower()
         )
-    
+
         self.dados = df
 
-    def treinar(self):
+    def treinar(self, model_file="site/modelo_ia.pkl"):
         if len(self.dados) < 10:
             print("   ERRO: Dados insuficientes para treinar os modelos (mínimo 10 registos).")
             return
@@ -400,7 +569,7 @@ class AvaliadorCarros:
         print("  A treinar os 6 modelos com dados do Scraper...")
         print("=" * 62)
 
-        X_enc = self.fe.preparar(self.dados)
+        X_enc = self.fe.preparar(self.dados, fit_mode=True)
         self.fe.fit(X_enc)
         y = self.dados["price"].values
 
@@ -416,12 +585,52 @@ class AvaliadorCarros:
             print(f"  {m.nome:<22} {m.nota:<14} {m.metricas['mae']:>8,.0f}€ {m.metricas['rmse']:>8,.0f}€ {m.metricas['r2']:>6.3f} {m.metricas['mape']:>6.1f}%{flag}")
         print("=" * 72)
 
+        # Persistence: save state
+        try:
+            # Create directories if needed
+            parent_dir = os.path.dirname(model_file)
+            if parent_dir:
+                os.makedirs(parent_dir, exist_ok=True)
+            with open(model_file, "wb") as f:
+                pickle.dump(self, f)
+            print(f"\n   [PERSISTÊNCIA] Modelo calibrado e salvo com sucesso em '{model_file}'!")
+        except Exception as e:
+            # Try saving in fallback location (current folder)
+            fallback = os.path.basename(model_file)
+            try:
+                with open(fallback, "wb") as f:
+                    pickle.dump(self, f)
+                print(f"\n   [PERSISTÊNCIA] Modelo salvo em local alternativo '{fallback}' devido a: {e}")
+            except:
+                print(f"\n   [AVISO] Falha ao persistir modelo: {e}")
+
     def buscar(self, termo: str) -> pd.DataFrame:
         return self.dados[self.dados["_busca"].str.contains(termo.lower(), na=False)].sort_values("price")
 
     def avaliar_carro(self, df_carro: pd.DataFrame):
-        previsoes  = self.mm.prever_carro(df_carro)
-        preco_real = df_carro["price"].iloc[0] if "price" in df_carro.columns else None
+        # Apply standard preprocessors
+        df_copy = df_carro.copy()
+        if "make" in df_copy.columns:
+            df_copy["make"] = df_copy["make"].astype(str).str.strip().apply(lambda x: BRAND_MAP.get(x.lower(), x.title()))
+        if "model" in df_copy.columns:
+            df_copy["model"] = df_copy["model"].astype(str).str.strip().apply(lambda x: str(x).split()[0] if x else "Outro")
+        
+        # Calculate dynamic age and km_per_year
+        if "year" in df_copy.columns:
+            df_copy["age"] = 2026 - df_copy["year"].astype(int)
+        else:
+            df_copy["age"] = 10
+            
+        if "mileage" in df_copy.columns:
+            df_copy["km_per_year"] = df_copy["mileage"].astype(float) / (df_copy["age"] + 1)
+        else:
+            df_copy["km_per_year"] = 15000.0
+
+        if "hp" not in df_copy.columns or pd.isna(df_copy["hp"]).any():
+            df_copy["hp"] = df_copy.apply(self.estimar_potencia, axis=1)
+
+        previsoes  = self.mm.prever_carro(df_copy)
+        preco_real = df_carro["price"].iloc[0] if "price" in df_carro.columns and pd.notna(df_carro["price"].iloc[0]) else None
         return previsoes, preco_real
 
     def mostrar_avaliacao(self, previsoes: dict, preco_real=None):
@@ -430,6 +639,10 @@ class AvaliadorCarros:
         print(f"\n  PREVISÕES DOS MODELOS:")
         menor_erro = float("inf")
         melhor_nome = melhor_prev = None
+
+        # Best predicted value
+        melhor_prev = previsoes.get(self.mm.melhor.nome, list(previsoes.values())[0])
+        melhor_nome = self.mm.melhor.nome
 
         for nome, prev in previsoes.items():
             if preco_real:
@@ -441,7 +654,6 @@ class AvaliadorCarros:
                     menor_erro = erro_abs; melhor_nome = nome; melhor_prev = prev
             else:
                 print(f"   {nome:<22}: {prev:>10,.0f} €")
-                melhor_prev = prev
 
         print(f"\n{'=' * 60}")
         if preco_real and melhor_nome:
@@ -450,16 +662,16 @@ class AvaliadorCarros:
             msg = "  EXCELENTE OPORTUNIDADE! COMPRE!" if dif/preco_real > 0.15 else "  BOM NEGÓCIO!" if dif > 0 else "  NEGÓCIO DESFAVORÁVEL — EVITE!" if abs(dif)/preco_real > 0.15 else "   Caro, tente negociar."
             print(f"\n{msg} ({'abaixo' if dif > 0 else 'acima'} do mercado por {abs(dif):,.0f} €)")
         else:
-            print(f"  Valor estimado médio: {melhor_prev:,.0f} €")
+            print(f"  Valor estimado médio ({melhor_nome}): {melhor_prev:,.0f} €")
         print(f"{'=' * 60}\n")
 
     def criar_carro_manual(self) -> pd.DataFrame:
         print("\n" + "=" * 50 + "\n     CRIAR CARRO PERSONALIZADO\n" + "=" * 50)
         carro = {}
-        for campo in Config.CAMPOS_NUMERICOS:
+        for campo in ["mileage", "hp", "year"]:
             v = input(f"   {campo}: ").strip()
-            carro[campo] = int(v) if v.isdigit() else 0
-        for campo in Config.CAMPOS_CATEGORICOS:
+            carro[campo] = int(v) if v.isdigit() else (100 if campo == "hp" else (2015 if campo == "year" else 100000))
+        for campo in ["make", "model", "fuel", "gear"]:
             carro[campo] = input(f"   {campo}: ").strip()
         v = input("   price (preço opcional — Enter para saltar): ").strip()
         carro["price"] = int(v) if v.isdigit() else None
@@ -469,10 +681,29 @@ class AvaliadorCarros:
 def main():
     console.clear()
     print("=" * 56 + "\n    AVALIADOR INTELIGENTE DE CARROS   \n    Treinado com dados Dinâmicos do Scraper\n" + "=" * 56)
-    av = AvaliadorCarros()
-    av.carregar()
-    av.treinar()
-
+    
+    # Path settings
+    model_paths = ["site/modelo_ia.pkl", "../site/modelo_ia.pkl", "modelo_ia.pkl"]
+    loaded = False
+    av = None
+    
+    for p in model_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "rb") as f:
+                    av = pickle.load(f)
+                loaded = True
+                print(f"\n   [OK] Modelo carregado a partir do ficheiro de persistência '{p}'!")
+                break
+            except Exception as e:
+                print(f"   [AVISO] Erro ao ler '{p}': {e}")
+                
+    if not loaded:
+        av = AvaliadorCarros()
+        av.carregar()
+        # Train and save to default site/modelo_ia.pkl
+        av.treinar()
+    
     while True:
         print("\n[1] Buscar carros no dataset\n[2] Criar e avaliar carro personalizado\n[3] Gerar gráficos comparativos\n[4] Sair")
         opcao = input("\n Opção: ").strip()

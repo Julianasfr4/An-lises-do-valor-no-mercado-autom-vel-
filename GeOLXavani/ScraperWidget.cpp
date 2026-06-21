@@ -90,17 +90,17 @@ void ScraperWidget::setupUi()
 
 void ScraperWidget::onRunScraperClicked()
 {
-    QString baseOutputName = "carros_scraped.csv";
+    QString baseOutputName = "olx_carros.csv";
 
-    // Base path without extensions or wildcards so Python handles the timestamp appending correctly
-    expectedCsvPath = QDir::current().absoluteFilePath(baseOutputName);
+    // Base path pointing to the unified site directory location
+    expectedCsvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/" + baseOutputName);
 
-    // Absolute path to the Python scraper script
-    QString scriptPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("olx_car_scraper.py");
+    // Absolute path to the Python scraper script inside the site folder
+    QString scriptPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_car_scraper.py");
 
     QStringList arguments;
     arguments << scriptPath;
-    arguments << "--output" << "carros_scraped";
+    arguments << "--output" << QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros");
     arguments << "--formato" << "csv";
     arguments << "--pages" << QString::number(pagesSpinBox->value());
 
@@ -154,11 +154,11 @@ void ScraperWidget::onScraperFinished(int exitCode, QProcess::ExitStatus exitSta
         return;
     }
 
-    QString actualCsvPath = QDir::current().absoluteFilePath("carros_scraped.csv");
+    QString actualCsvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros.csv");
 
     if (!QFile::exists(actualCsvPath)) {
         QMessageBox::warning(this, tr("File Not Found"),
-                             tr("carros_scraped.csv não foi encontrado."));
+                             tr("olx_carros.csv não foi encontrado no site."));
         return;
     }
 

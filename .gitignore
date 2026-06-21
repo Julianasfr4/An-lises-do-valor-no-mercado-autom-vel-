@@ -1,0 +1,26 @@
+# Qt / CMake build directories
+GeOLXavani/build*/
+GeOLXavani/build_clean/
+GeOLXavani/app/
+
+# Local test outputs and graphs
+GeOLXavani/carros_scraped.csv
+GeOLXavani/carros_scraped.json
+GeOLXavani/comparacao_modelos.png
+doc_structure.txt
+olx_carros_ia.json
+
+# Python cache
+__pycache__/
+site/__pycache__/
+*.pyc
+
+# LaTeX temporary files
+site/relatorio.aux
+site/relatorio.log
+site/relatorio.out
+
+# Word backups and lock files
+site/relatorio_olx_sistema (entrega)_backup.docx
+site/.~lock.*
+.~lock.*

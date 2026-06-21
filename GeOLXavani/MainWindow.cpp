@@ -1,6 +1,7 @@
 #include "MainWindow.h"
 #include "ScraperWidget.h"
 #include "MlWidget.h"
+#include "TrainingWidget.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -20,7 +21,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupMainMenuUi();
     scraperWidget = new ScraperWidget(this);
     mlWidget = new MlWidget(this);
-    checkCarsWidget = new QWidget(this);
+    checkCarsWidget = new TrainingWidget(this);
 
     // Registo ordenado no index do QStackedWidget
     stackedWidget->addWidget(mainMenuWidget);     // Index 0
@@ -31,6 +32,7 @@ MainWindow::MainWindow(QWidget *parent)
     // Conexões de roteamento de interface
     connect(scraperWidget, &ScraperWidget::backToMainMenuRequested, this, &MainWindow::switchToMainMenuView);
     connect(mlWidget, &MlWidget::backToMainMenuRequested, this, &MainWindow::switchToMainMenuView);
+    connect(checkCarsWidget, &TrainingWidget::backToMainMenuRequested, this, &MainWindow::switchToMainMenuView);
 }
 
 MainWindow::~MainWindow() {}
@@ -74,7 +76,7 @@ void MainWindow::switchToMainMenuView() { stackedWidget->setCurrentIndex(0); }
 
 void MainWindow::onCheckCarsClicked()
 {
-    QMessageBox::information(this, tr("Data Viewer"), tr("This opens your Check Cars view window later!"));
+    stackedWidget->setCurrentIndex(3);
 }
 
 void MainWindow::onMlClicked()

@@ -95,7 +95,7 @@ void MlWidget::setupUi()
 
 void MlWidget::onRunTrainingClicked()
 {
-    QString csvDataPath = QDir::current().absoluteFilePath("carros_scraped.csv");
+    QString csvDataPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros.csv");
 
     if (!QFile::exists(csvDataPath)) {
         QString errorMsg = tr("Data file not found!\n\n"

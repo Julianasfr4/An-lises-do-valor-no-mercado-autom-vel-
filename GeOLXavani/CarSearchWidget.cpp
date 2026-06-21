@@ -63,7 +63,7 @@ void CarSearchWidget::setupUi()
 
 void CarSearchWidget::loadDataset()
 {
-    QString csvPath = QDir::current().absoluteFilePath("carros_scraped.csv");
+    QString csvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros.csv");
     if (!QFile::exists(csvPath)) return;
 
     QFile file(csvPath);

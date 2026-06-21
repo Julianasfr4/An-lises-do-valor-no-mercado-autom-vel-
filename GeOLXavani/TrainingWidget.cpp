@@ -96,9 +96,10 @@ void TrainingWidget::onRunTrainingClicked()
     sendButton->setEnabled(true);
     inputLineEdit->setFocus();
 
-    QString scriptPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("train_car_model.py");
+    QString scriptPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("ml-training.py");
+    QString csvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros.csv");
     QStringList arguments;
-    arguments << "-u" << scriptPath; // -u remove o buffer do Python
+    arguments << "-u" << scriptPath << csvPath; // -u remove o buffer do Python
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     // Força o ambiente global a usar UTF-8 no Python e no terminal do Windows
