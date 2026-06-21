@@ -476,7 +476,7 @@ class AvaliadorCarros:
             
         return 100
 
-    def carregar(self, default_ficheiro="site/olx_carros.csv"):
+    def carregar(self, default_ficheiro="JuOLXana/olx_carros.csv"):
         # Se Qt ou terminal passar caminho via argumento
         if len(sys.argv) > 2 and sys.argv[2].endswith('.csv'):
             ficheiro = sys.argv[2]
@@ -487,8 +487,8 @@ class AvaliadorCarros:
             possible_paths = [
                 default_ficheiro,
                 "../" + default_ficheiro,
-                "site/olx_carros.csv",
-                "../site/olx_carros.csv",
+                "JuOLXana/olx_carros.csv",
+                "../JuOLXana/olx_carros.csv",
                 "carros_scraped.csv"
             ]
             ficheiro = None
@@ -560,7 +560,7 @@ class AvaliadorCarros:
 
         self.dados = df
 
-    def treinar(self, model_file="site/modelo_ia.pkl"):
+    def treinar(self, model_file="JuOLXana/modelo_ia.pkl"):
         if len(self.dados) < 10:
             print("   ERRO: Dados insuficientes para treinar os modelos (mínimo 10 registos).")
             return
@@ -683,7 +683,7 @@ def main():
     print("=" * 56 + "\n    AVALIADOR INTELIGENTE DE CARROS   \n    Treinado com dados Dinâmicos do Scraper\n" + "=" * 56)
     
     # Path settings
-    model_paths = ["site/modelo_ia.pkl", "../site/modelo_ia.pkl", "modelo_ia.pkl"]
+    model_paths = ["JuOLXana/modelo_ia.pkl", "../JuOLXana/modelo_ia.pkl", "modelo_ia.pkl"]
     loaded = False
     av = None
     
@@ -701,7 +701,7 @@ def main():
     if not loaded:
         av = AvaliadorCarros()
         av.carregar()
-        # Train and save to default site/modelo_ia.pkl
+        # Train and save to default JuOLXana/modelo_ia.pkl
         av.treinar()
     
     while True:

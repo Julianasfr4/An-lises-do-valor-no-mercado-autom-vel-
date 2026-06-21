@@ -2,9 +2,8 @@
 """
 gerar_previsoes_ia.py
 ====================================================
-Treina os modelos e escreve a previsão de preço justo 
-diretamente no ficheiro JSON consumido pelo site.
-Salva o melhor modelo calibrado no ficheiro modelo_ia.pkl para persistência.
+Treina os modelos e escreve a previsão de preço justo diretamente no ficheiro JSON consumido pelo portal JuOLXana.
+ Salva o melhor modelo calibrado no ficheiro modelo_ia.pkl para persistência.
 ====================================================
 """
 
@@ -386,7 +385,7 @@ def prever_para_todos(df: pd.DataFrame, melhor: ModeloBase, fe: FeatureEngineer)
 # =============================================================
 # 6. JUNTAR AS PREVISÕES AO JSON DO SITE
 # =============================================================
-def atualizar_json(caminho_json: str, previsoes_por_url: dict, nome_modelo: str, mape_modelo: float, output_json="site/olx_carros_ia.json"):
+def atualizar_json(caminho_json: str, previsoes_por_url: dict, nome_modelo: str, mape_modelo: float, output_json="JuOLXana/olx_carros_ia.json"):
     try:
         with open(caminho_json, "r", encoding="utf-8") as f:
             carros = json.load(f)
@@ -435,8 +434,8 @@ def atualizar_json(caminho_json: str, previsoes_por_url: dict, nome_modelo: str,
 # 7. PRINCIPAL
 # =============================================================
 def main():
-    caminho_csv  = sys.argv[1] if len(sys.argv) > 1 else "site/olx_carros.csv"
-    caminho_json = sys.argv[2] if len(sys.argv) > 2 else "site/olx_carros.json"
+    caminho_csv  = sys.argv[1] if len(sys.argv) > 1 else "JuOLXana/olx_carros.csv"
+    caminho_json = sys.argv[2] if len(sys.argv) > 2 else "JuOLXana/olx_carros.json"
 
     # Fallbacks for paths if run from wrong directory
     if not os.path.exists(caminho_csv) and os.path.exists("olx_carros.csv"):

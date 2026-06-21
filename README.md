@@ -6,11 +6,11 @@ Este projeto é um ecossistema integrado para recolha, análise analítica e mon
 
 ## 🏛️ Arquitetura Geral & Partilha de Dados
 
-O sistema está estruturado de forma a partilhar dados em tempo real entre a aplicação desktop e o website através de um diretório de dados unificado na pasta `/site`:
+O sistema está estruturado de forma a partilhar dados em tempo real entre a aplicação desktop e o website através de um diretório de dados unificado na pasta `/JuOLXana`:
 
 ```mermaid
 graph TD
-    Scraper[olx_car_scraper.py] -->|Gera CSV e JSON| DataFolder[(Pasta site/)]
+    Scraper[olx_car_scraper.py] -->|Gera CSV e JSON| DataFolder[(Pasta JuOLXana/)]
     DataFolder -->|olx_carros.csv| QtApp[Aplicação Qt C++]
     DataFolder -->|olx_carros.csv| IaGen[gerar_previsoes_ia.py]
     IaGen -->|Salva modelo.pkl| DataFolder
@@ -20,9 +20,9 @@ graph TD
     EvalScript -->|Avaliação Individual| QtApp
 ```
 
-1. **Ficheiro de Dados Único (`olx_carros.csv`):** Tanto o scraper da app Qt como o script unificador do site escrevem e lêem a partir de `site/olx_carros.csv`. Isto garante que qualquer dados extraídos por um lado estão imediatamente disponíveis para o outro.
+1. **Ficheiro de Dados Único (`olx_carros.csv`):** Tanto o scraper da app Qt como o script unificador do site escrevem e lêem a partir de `JuOLXana/olx_carros.csv`. Isto garante que qualquer dados extraídos por um lado estão imediatamente disponíveis para o outro.
 2. **Previsões de IA (`olx_carros_ia.json`):** A inteligência analítica treina os modelos com base no CSV unificado e enriquece os anúncios no JSON final consumido pelo website, calculando os desvios e oportunidades de mercado.
-3. **Persistência de Modelos (`modelo_ia.pkl`):** O modelo vencedor (XGBoost/LightGBM com $R^2 \approx 0.91$) é serializado e guardado em `site/modelo_ia.pkl`. O painel de avaliação da app Qt utiliza o script `evaluate_car.py` para carregar este ficheiro e prever o valor justo instantaneamente, sem necessidade de re-treino.
+3. **Persistência de Modelos (`modelo_ia.pkl`):** O modelo vencedor (XGBoost/LightGBM com $R^2 \approx 0.91$) é serializado e guardado em `JuOLXana/modelo_ia.pkl`. O painel de avaliação da app Qt utiliza o script `evaluate_car.py` para carregar este ficheiro e prever o valor justo instantaneamente, sem necessidade de re-treino.
 
 ---
 
@@ -57,18 +57,18 @@ cmake --build .
 
 ---
 
-### 🌐 2. Portal Web & Automatização — `site`
+### 🌐 2. Portal Web & Automatização — `JuOLXana`
 
 O portal AutoMercado disponibiliza uma interface interativa (SPA) com filtros avançados e ordenação dinâmica por "Melhor Negócio" (desvio face à estimativa da IA).
 
 #### Execução do Site:
-1. Simplesmente abra o ficheiro [automarket.html](file:///c:/Users/geova/OneDrive/Documentos/GitHub/An-lises-do-valor-no-mercado-autom-vel-/site/automarket.html) diretamente em qualquer navegador Web moderno.
+1. Simplesmente abra o ficheiro [automarket.html](file:///c:/Users/geova/OneDrive/Documentos/GitHub/An-lises-do-valor-no-mercado-autom-vel-/JuOLXana/automarket.html) diretamente em qualquer navegador Web moderno.
 2. Se o ficheiro JSON não for encontrado automaticamente, o portal permite carregar manualmente o `olx_carros_ia.json` gerado pelo pipeline de IA.
 
 #### Pipeline Completo (Scraping + IA):
 Para atualizar os dados do site em lote de forma 100% automatizada, execute o script unificador:
 ```bash
-python site/executar_tudo.py
+python JuOLXana/executar_tudo.py
 ```
 Este script irá descarregar os anúncios mais recentes, treinar os modelos de IA, calcular as estimativas justas de mercado e atualizar o portal web.
 

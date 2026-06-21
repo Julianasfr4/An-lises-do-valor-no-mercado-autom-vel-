@@ -96,10 +96,10 @@ def main():
 
     # Find the pickled model
     possible_paths = [
-        "../site/modelo_ia.pkl",
-        "site/modelo_ia.pkl",
+        "../JuOLXana/modelo_ia.pkl",
+        "JuOLXana/modelo_ia.pkl",
         "modelo_ia.pkl",
-        "../../site/modelo_ia.pkl"
+        "../../JuOLXana/modelo_ia.pkl"
     ]
     model_path = None
     for p in possible_paths:

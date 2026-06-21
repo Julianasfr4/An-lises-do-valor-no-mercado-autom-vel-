@@ -92,15 +92,15 @@ void ScraperWidget::onRunScraperClicked()
 {
     QString baseOutputName = "olx_carros.csv";
 
-    // Base path pointing to the unified site directory location
-    expectedCsvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/" + baseOutputName);
+    // Base path pointing to the unified JuOLXana directory location
+    expectedCsvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../JuOLXana/" + baseOutputName);
 
-    // Absolute path to the Python scraper script inside the site folder
-    QString scriptPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_car_scraper.py");
+    // Absolute path to the Python scraper script inside the JuOLXana folder
+    QString scriptPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../JuOLXana/olx_car_scraper.py");
 
     QStringList arguments;
     arguments << scriptPath;
-    arguments << "--output" << QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros");
+    arguments << "--output" << QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../JuOLXana/olx_carros");
     arguments << "--formato" << "csv";
     arguments << "--pages" << QString::number(pagesSpinBox->value());
 
@@ -154,11 +154,11 @@ void ScraperWidget::onScraperFinished(int exitCode, QProcess::ExitStatus exitSta
         return;
     }
 
-    QString actualCsvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../site/olx_carros.csv");
+    QString actualCsvPath = QDir(PROJECT_SOURCE_DIR).absoluteFilePath("../JuOLXana/olx_carros.csv");
 
     if (!QFile::exists(actualCsvPath)) {
         QMessageBox::warning(this, tr("File Not Found"),
-                             tr("olx_carros.csv não foi encontrado no site."));
+                             tr("olx_carros.csv não foi encontrado no JuOLXana."));
         return;
     }
 

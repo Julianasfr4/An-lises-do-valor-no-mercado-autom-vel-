@@ -22,7 +22,7 @@ def correr_comando(comando, descricao):
 
 def main():
     print("\n🤖 BEM-VINDO AO AUTOMERCADO (Sistema Unificado) 🤖")
-    print("Este script vai extrair dados do OLX e exportar o JSON inteligente para o site.\n")
+    print("Este script vai extrair dados do OLX e exportar o JSON inteligente para o portal JuOLXana.\n")
     
     # =========================================================
     # ⚙️ CONFIGURAÇÃO DO SCRAPER
@@ -59,7 +59,7 @@ def main():
     
     # 2. Correr a IA (Agora automatizada e sem menus!)
     comando_ia = [sys.executable, "gerar_previsoes_ia.py", "olx_carros.csv", "olx_carros.json"]
-    correr_comando(comando_ia, "Gerar Previsões de IA para o Site")
+    correr_comando(comando_ia, "Gerar Previsões de IA para o portal JuOLXana")
     
     print("\n✅ Processo unificado concluído! Podes abrir o teu automarket.html")
 

@@ -12,15 +12,15 @@ olx_carros_ia.json
 
 # Python cache
 __pycache__/
-site/__pycache__/
+JuOLXana/__pycache__/
 *.pyc
 
 # LaTeX temporary files
-site/relatorio.aux
-site/relatorio.log
-site/relatorio.out
+JuOLXana/relatorio.aux
+JuOLXana/relatorio.log
+JuOLXana/relatorio.out
 
 # Word backups and lock files
-site/relatorio_olx_sistema (entrega)_backup.docx
-site/.~lock.*
+JuOLXana/relatorio_olx_sistema (entrega)_backup.docx
+JuOLXana/.~lock.*
 .~lock.*
